@@ -12,24 +12,30 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Build Xcode Project with Swift Package
+      - name: Compile and Package iOS IPA
         run: |
-          mkdir -p build/Payload
           APP_NAME="DynamicIsland"
-          
-          # Build Swift package for iOS arm64
-          swift build -c release --triple arm64-apple-ios15.0
-          
           mkdir -p "build/Payload/$APP_NAME.app"
           
-          # Copy binary
-          if [ -f ".build/arm64-apple-ios15.0/release/$APP_NAME" ]; then
-            cp ".build/arm64-apple-ios15.0/release/$APP_NAME" "build/Payload/$APP_NAME.app/"
-          elif [ -f ".build/release/$APP_NAME" ]; then
-            cp ".build/release/$APP_NAME" "build/Payload/$APP_NAME.app/"
-          fi
+          # 1. Locate the real iPhoneOS SDK on the runner
+          SDK_PATH=$(xcrun --sdk iphoneos --show-sdk-path)
+          echo "Using iPhoneOS SDK at: $SDK_PATH"
           
-          # Create Info.plist
+          # 2. Compile Swift files directly for iPhone 13 (ARM64)
+          xcrun swiftc \
+            -sdk "$SDK_PATH" \
+            -target arm64-apple-ios15.0 \
+            -parse-as-library \
+            -O \
+            DemoContentView.swift \
+            DynamicIslandApp.swift \
+            DynamicIslandManager.swift \
+            DynamicIslandModel.swift \
+            DynamicIslandView.swift \
+            NotchGeometry.swift \
+            -o "build/Payload/$APP_NAME.app/$APP_NAME"
+          
+          # 3. Create Info.plist
           cat <<EOF > "build/Payload/$APP_NAME.app/Info.plist"
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -65,9 +71,12 @@ jobs:
           </plist>
           EOF
 
-          # Package into IPA
+          # 4. Ad-hoc codesign
+          codesign -s - --force --deep "build/Payload/$APP_NAME.app"
+
+          # 5. Create IPA archive
           cd build
-          zip -r "DynamicIsland.ipa" Payload
+          zip -qr "DynamicIsland.ipa" Payload
 
       - name: Upload IPA Artifact
         uses: actions/upload-artifact@v4
