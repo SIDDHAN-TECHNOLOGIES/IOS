@@ -17,11 +17,10 @@ jobs:
           APP_NAME="DynamicIsland"
           mkdir -p "build/Payload/$APP_NAME.app"
           
-          # 1. Locate the real iPhoneOS SDK on the runner
+          # 1. Locate iPhoneOS SDK
           SDK_PATH=$(xcrun --sdk iphoneos --show-sdk-path)
-          echo "Using iPhoneOS SDK at: $SDK_PATH"
           
-          # 2. Compile Swift files directly for iPhone 13 (ARM64)
+          # 2. Compile native ARM64 binary
           xcrun swiftc \
             -sdk "$SDK_PATH" \
             -target arm64-apple-ios15.0 \
@@ -71,10 +70,8 @@ jobs:
           </plist>
           EOF
 
-          # 4. Ad-hoc codesign
+          # 4. Sign and archive into IPA
           codesign -s - --force --deep "build/Payload/$APP_NAME.app"
-
-          # 5. Create IPA archive
           cd build
           zip -qr "DynamicIsland.ipa" Payload
 
