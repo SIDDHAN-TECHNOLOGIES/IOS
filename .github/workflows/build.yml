@@ -7,23 +7,27 @@ on:
 
 jobs:
   build:
-    runs-on: macos-14
+    runs-on: macos-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Select Xcode
-        run: sudo xcode-select -s /Applications/Xcode.app
-
       - name: Build Xcode Project with Swift Package
         run: |
           mkdir -p build/Payload
-          # Build executable
+          APP_NAME="DynamicIsland"
+          
+          # Build Swift package for iOS arm64
           swift build -c release --triple arm64-apple-ios15.0
           
-          # Prepare Payload for IPA
-          APP_NAME="DynamicIsland"
           mkdir -p "build/Payload/$APP_NAME.app"
+          
+          # Copy binary
+          if [ -f ".build/arm64-apple-ios15.0/release/$APP_NAME" ]; then
+            cp ".build/arm64-apple-ios15.0/release/$APP_NAME" "build/Payload/$APP_NAME.app/"
+          elif [ -f ".build/release/$APP_NAME" ]; then
+            cp ".build/release/$APP_NAME" "build/Payload/$APP_NAME.app/"
+          fi
           
           # Create Info.plist
           cat <<EOF > "build/Payload/$APP_NAME.app/Info.plist"
